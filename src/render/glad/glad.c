@@ -110,7 +110,7 @@ void mjGlad_close_gl(void) {
 #include <dlfcn.h>
 static void* mjGlad_libGL;
 
-#if !defined(__APPLE__) && !defined(__HAIKU__)
+#if !defined(__APPLE__) && !defined(__HAIKU__) && !defined(__EMSCRIPTEN__)
 #include <link.h>
 
 typedef void* (APIENTRYP PFNGLXGETPROCADDRESSPROC_PRIVATE)(const char*);
@@ -257,7 +257,7 @@ static
 void* mjGlad_get_proc(const char *namez) {
   void* result = NULL;
 
-#if !defined(__APPLE__) && !defined(__HAIKU__)
+#if !defined(__APPLE__) && !defined(__HAIKU__) && !defined(__EMSCRIPTEN__)
   if(mjGladGetProcAddressPtr != NULL) {
     result = mjGladGetProcAddressPtr(namez);
   }

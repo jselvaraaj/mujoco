@@ -74,21 +74,23 @@ set(GLFW_BUILD_TESTS OFF)
 set(GLFW_BUILD_DOCS OFF)
 set(GLFW_INSTALL OFF)
 
-findorfetch(
-  USE_SYSTEM_PACKAGE
-  MUJOCO_SAMPLES_USE_SYSTEM_GLFW
-  PACKAGE_NAME
-  glfw3
-  LIBRARY_NAME
-  glfw3
-  GIT_REPO
-  https://github.com/glfw/glfw.git
-  GIT_TAG
-  ${MUJOCO_DEP_VERSION_glfw3}
-  TARGETS
-  glfw
-  EXCLUDE_FROM_ALL
-)
+if(NOT EMSCRIPTEN)
+  findorfetch(
+    USE_SYSTEM_PACKAGE
+    MUJOCO_SAMPLES_USE_SYSTEM_GLFW
+    PACKAGE_NAME
+    glfw3
+    LIBRARY_NAME
+    glfw3
+    GIT_REPO
+    https://github.com/glfw/glfw.git
+    GIT_TAG
+    ${MUJOCO_DEP_VERSION_glfw3}
+    TARGETS
+    glfw
+    EXCLUDE_FROM_ALL
+  )
+endif()
 
 if(MUJOCO_EXTRAS_STATIC_GLFW)
   set(BUILD_SHARED_LIBS
@@ -99,6 +101,8 @@ if(MUJOCO_EXTRAS_STATIC_GLFW)
 endif()
 
 if(NOT SAMPLE_STANDALONE)
-  target_compile_options(glfw PRIVATE ${MUJOCO_MACOS_COMPILE_OPTIONS})
-  target_link_options(glfw PRIVATE ${MUJOCO_MACOS_LINK_OPTIONS})
+  if(NOT EMSCRIPTEN)
+    target_compile_options(glfw PRIVATE ${MUJOCO_MACOS_COMPILE_OPTIONS})
+    target_link_options(glfw PRIVATE ${MUJOCO_MACOS_LINK_OPTIONS})
+  endif()
 endif()

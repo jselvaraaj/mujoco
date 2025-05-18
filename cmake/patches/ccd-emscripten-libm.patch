@@ -1,0 +1,15 @@
+--- a/src/CMakeLists.txt
++++ b/src/CMakeLists.txt
+@@ -51,7 +51,11 @@
+ if(NOT WIN32)
+   find_library(LIBM_LIBRARY NAMES m)
+   if(NOT LIBM_LIBRARY)
+-    message(FATAL_ERROR "Could NOT find required library LibM")
++    if(CMAKE_SYSTEM_NAME STREQUAL "Emscripten")
++      set(LIBM_LIBRARY "-lm")
++    else()
++      message(FATAL_ERROR "Could NOT find required library LibM (System: ${CMAKE_SYSTEM_NAME})")
++    endif()
+   endif()
+   target_link_libraries(ccd "${LIBM_LIBRARY}")
+   if(BUILD_SHARED_LIBS) 

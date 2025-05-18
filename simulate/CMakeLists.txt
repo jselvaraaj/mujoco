@@ -115,8 +115,12 @@ if(APPLE)
 endif()
 target_include_directories(
   platform_ui_adapter PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}
-                             $<TARGET_PROPERTY:glfw,INTERFACE_INCLUDE_DIRECTORIES>
 )
+if(NOT EMSCRIPTEN)
+  target_include_directories(
+    platform_ui_adapter PUBLIC $<TARGET_PROPERTY:glfw,INTERFACE_INCLUDE_DIRECTORIES>
+  )
+endif()
 target_link_libraries(platform_ui_adapter PUBLIC mujoco::mujoco)
 if(SIMULATE_GLFW_DYNAMIC_SYMBOLS)
   target_compile_definitions(platform_ui_adapter PUBLIC mjGLFW_DYNAMIC_SYMBOLS)
@@ -169,10 +173,16 @@ if(SIMULATE_BUILD_EXECUTABLE)
     simulate
     libsimulate
     mujoco::mujoco
-    glfw
     Threads::Threads
     lodepng
   )
+
+  if(NOT EMSCRIPTEN)
+    target_link_libraries(
+      simulate
+      glfw
+    )
+  endif()
 
   target_link_options(simulate PRIVATE ${MUJOCO_SIMULATE_LINK_OPTIONS})
 
@@ -240,6 +250,22 @@ if(SIMULATE_BUILD_EXECUTABLE)
       MUJOCO_ENABLE_RPATH
     )
 
+    if(NOT EMSCRIPTEN)
+      if(NOT MUJOCO_SIMULATE_USE_SYSTEM_GLFW)
+        get_target_property(MJ_GLFW_LIBRARY_TYPE glfw TYPE)
+        if(MJ_GLFW_LIBRARY_TYPE STREQUAL SHARED_LIBRARY)
+          install(
+            TARGETS glfw
+            EXPORT ${PROJECT_NAME}
+            RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}" COMPONENT simulate
+            LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}" COMPONENT simulate
+            ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}" COMPONENT simulate
+            PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR} COMPONENT simulate
+          )
+        endif()
+      endif()
+    endif()
+
     install(
       TARGETS simulate
       EXPORT ${PROJECT_NAME}
@@ -249,21 +275,5 @@ if(SIMULATE_BUILD_EXECUTABLE)
       BUNDLE DESTINATION "${CMAKE_INSTALL_BINDIR}" COMPONENT simulate
       PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR} COMPONENT simulate
     )
-
-    if(NOT MUJOCO_SIMULATE_USE_SYSTEM_GLFW)
-      # We downloaded GLFW. Depending if it is a static or shared LIBRARY we might
-      # need to install it.
-      get_target_property(MJ_GLFW_LIBRARY_TYPE glfw TYPE)
-      if(MJ_GLFW_LIBRARY_TYPE STREQUAL SHARED_LIBRARY)
-        install(
-          TARGETS glfw
-          EXPORT ${PROJECT_NAME}
-          RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}" COMPONENT simulate
-          LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}" COMPONENT simulate
-          ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}" COMPONENT simulate
-          PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR} COMPONENT simulate
-        )
-      endif()
-    endif()
   endif()
 endif()

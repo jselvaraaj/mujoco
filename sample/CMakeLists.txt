@@ -91,9 +91,11 @@ target_compile_options(basic PUBLIC ${MUJOCO_SAMPLE_COMPILE_OPTIONS})
 target_link_libraries(
   basic
   mujoco::mujoco
-  glfw
   Threads::Threads
 )
+if(NOT EMSCRIPTEN)
+  target_link_libraries(basic glfw)
+endif()
 target_link_options(basic PRIVATE ${MUJOCO_SAMPLE_LINK_OPTIONS})
 
 add_executable(record record.cc array_safety.h)
@@ -101,20 +103,23 @@ target_compile_options(record PUBLIC ${MUJOCO_SAMPLE_COMPILE_OPTIONS})
 target_link_libraries(
   record
   mujoco::mujoco
-  glfw
   Threads::Threads
 )
+if(NOT EMSCRIPTEN)
+  target_link_libraries(record glfw)
+endif()
 target_link_options(record PRIVATE ${MUJOCO_SAMPLE_LINK_OPTIONS})
 
 if(APPLE AND MUJOCO_BUILD_MACOS_FRAMEWORKS)
-  embed_in_bundle(basic simulate)
+  if(NOT EMSCRIPTEN)
+    embed_in_bundle(basic simulate)
+    embed_in_bundle(record simulate)
+  endif()
   embed_in_bundle(compile simulate)
-  embed_in_bundle(record simulate)
   embed_in_bundle(testspeed simulate)
 endif()
 
-# Do not install if macOS Bundles are created as RPATH is managed manually there.
-if(APPLE AND MUJOCO_BUILD_MACOS_FRAMEWORKS)
+if(APPLE AND MUJOCO_BUILD_MACOS_FRAMEWORKS AND NOT EMSCRIPTEN)
   set(_INSTALL_SAMPLES OFF)
 endif()
 
@@ -150,19 +155,19 @@ if(_INSTALL_SAMPLES)
     PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR} COMPONENT samples
   )
 
-  if(NOT MUJOCO_SAMPLES_USE_SYSTEM_GLFW)
-    # We downloaded GLFW. Depending if it is a static or shared LIBRARY we might
-    # need to install it.
-    get_target_property(MJ_GLFW_LIBRARY_TYPE glfw TYPE)
-    if(MJ_GLFW_LIBRARY_TYPE STREQUAL SHARED_LIBRARY)
-      install(
-        TARGETS glfw
-        EXPORT ${PROJECT_NAME}
-        RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}" COMPONENT samples
-        LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}" COMPONENT samples
-        ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}" COMPONENT samples
-        PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR} COMPONENT samples
-      )
+  if(NOT EMSCRIPTEN)
+    if(NOT MUJOCO_SAMPLES_USE_SYSTEM_GLFW)
+      get_target_property(MJ_GLFW_LIBRARY_TYPE glfw TYPE)
+      if(MJ_GLFW_LIBRARY_TYPE STREQUAL SHARED_LIBRARY)
+        install(
+          TARGETS glfw
+          EXPORT ${PROJECT_NAME}
+          RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}" COMPONENT samples
+          LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}" COMPONENT samples
+          ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}" COMPONENT samples
+          PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR} COMPONENT samples
+        )
+      endif()
     endif()
   endif()
 endif()

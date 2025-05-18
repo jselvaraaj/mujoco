@@ -20,7 +20,7 @@
 #include <stdarg.h>
 #include <time.h>
 
-#if defined (__unix__) || (defined (__APPLE__) && defined (__MACH__))
+#if defined(__unix__) || (defined(__APPLE__) && defined(__MACH__))
 #include <unistd.h>
 #endif
 
@@ -103,6 +103,13 @@ void mju_writeLog(const char* type, const char* msg) {
     localtime_s(&timeinfo, &rawtime);
 #elif __STDC_LIB_EXT1__
     localtime_s(&rawtime, &timeinfo);
+#elif defined(__EMSCRIPTEN__)
+    // Emscripten doesn't have thread-safe localtime, but for WebAssembly
+    // single-threaded environment, regular localtime is acceptable
+    struct tm* tmp = localtime(&rawtime);
+    if (tmp) {
+      timeinfo = *tmp;
+    }
 #else
     #error "Thread-safe version of `localtime` is not present in the standard C library"
 #endif

@@ -21,6 +21,10 @@ build_cmake/
 python/dist/
 doc/_build
 
+installation/
+build_wasm/
+build_wasm_port/
+
 # Exclude macOS folder attributes
 .DS_Store
 
