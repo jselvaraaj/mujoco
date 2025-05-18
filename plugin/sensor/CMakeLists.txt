@@ -25,7 +25,13 @@ set(MUJOCO_SENSOR_SRCS
     touch_stress.cc
 )
 
-add_library(sensor SHARED)
+if(EMSCRIPTEN)
+  set(LIBRARY_TYPE STATIC)
+else()
+  set(LIBRARY_TYPE SHARED)
+endif()
+
+add_library(sensor ${LIBRARY_TYPE})
 target_sources(sensor PRIVATE ${MUJOCO_SENSOR_SRCS})
 target_include_directories(sensor PRIVATE ${MUJOCO_SENSOR_INCLUDE})
 target_link_libraries(sensor PRIVATE mujoco)

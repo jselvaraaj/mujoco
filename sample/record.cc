@@ -29,6 +29,12 @@
   #include <GLFW/glfw3.h>
 #endif
 
+#ifdef __EMSCRIPTEN__
+  #include <emscripten.h>
+  #include <emscripten/html5.h>
+  #include <glfw_compat.h>
+#endif
+
 #include "array_safety.h"
 namespace mju = ::mujoco::sample_util;
 
@@ -156,11 +162,14 @@ void initOpenGL(void) {
 
   //------------------------ GLFW
 #else
+  glfwSetErrorCallback([](int error, const char* description) {
+      mju_warning("GLFW: %s", description);  
+  });
   // init GLFW
   if (!glfwInit()) {
     mju_error("Could not initialize GLFW");
   }
-
+  mj_request_es_context();
   // create invisible window, single-buffered
   glfwWindowHint(GLFW_VISIBLE, 0);
   glfwWindowHint(GLFW_DOUBLEBUFFER, GLFW_FALSE);

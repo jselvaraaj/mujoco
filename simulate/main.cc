@@ -39,7 +39,11 @@ extern "C" {
   #if defined(__APPLE__)
     #include <mach-o/dyld.h>
   #endif
-  #include <sys/errno.h>
+  #if defined(__EMSCRIPTEN__)
+    #include <errno.h>
+  #else
+    #include <sys/errno.h>
+  #endif
   #include <unistd.h>
 #endif
 }

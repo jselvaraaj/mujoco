@@ -22,6 +22,12 @@
 #include <mujoco/mujoco.h>
 #include "glfw_dispatch.h"
 
+#ifdef __EMSCRIPTEN__
+  #include <emscripten.h>
+  #include <emscripten/html5.h>
+  #include "glfw_compat.h"
+#endif
+
 #ifdef __APPLE__
 #include "glfw_corevideo.h"
 #endif
@@ -30,6 +36,9 @@ namespace mujoco {
 namespace {
 int MaybeGlfwInit() {
   static const int is_initialized = []() {
+    glfwSetErrorCallback([](int error, const char* description) {
+      mju_warning("GLFW: %s", description);  
+    });
     auto success = Glfw().glfwInit();
     if (success == GLFW_TRUE) {
       std::atexit(Glfw().glfwTerminate);
@@ -48,18 +57,27 @@ GlfwAdapter::GlfwAdapter() {
   if (MaybeGlfwInit() != GLFW_TRUE) {
     mju_error("could not initialize GLFW");
   }
-
+  mj_request_es_context();
   // multisampling
   Glfw().glfwWindowHint(GLFW_SAMPLES, 4);
   Glfw().glfwWindowHint(GLFW_VISIBLE, 1);
 
-  // get video mode and save
   vidmode_ = *Glfw().glfwGetVideoMode(Glfw().glfwGetPrimaryMonitor());
+  #if defined(__EMSCRIPTEN__)
+    int width = 1200;
+    int height = 900;
+    int canvas_width, canvas_height;
+    if (emscripten_get_canvas_element_size("#canvas", &canvas_width, &canvas_height) == EMSCRIPTEN_RESULT_SUCCESS) {
+      width = canvas_width;
+      height = canvas_height;
+    }
+  #else
+    int width  = (2 * vidmode_.width) / 3;
+    int height = (2 * vidmode_.height) / 3;
+  #endif
 
   // create window
-  window_ = Glfw().glfwCreateWindow((2 * vidmode_.width) / 3,
-                                    (2 * vidmode_.height) / 3,
-                                    "MuJoCo", nullptr, nullptr);
+  window_ = Glfw().glfwCreateWindow(width, height, "MuJoCo", nullptr, nullptr);
   if (!window_) {
     mju_error("could not create window");
   }

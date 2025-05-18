@@ -22,7 +22,13 @@ set(MUJOCO_ACTUATOR_SRCS
     register.cc
 )
 
-add_library(actuator SHARED)
+if(EMSCRIPTEN)
+  set(LIBRARY_TYPE STATIC)
+else()
+  set(LIBRARY_TYPE SHARED)
+endif()
+
+add_library(actuator ${LIBRARY_TYPE})
 target_sources(actuator PRIVATE ${MUJOCO_ACTUATOR_SRCS})
 target_include_directories(actuator PRIVATE ${MUJOCO_ACTUATOR_INCLUDE})
 target_link_libraries(actuator PRIVATE mujoco)

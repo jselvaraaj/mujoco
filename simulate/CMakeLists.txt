@@ -115,8 +115,13 @@ if(APPLE)
 endif()
 target_include_directories(
   platform_ui_adapter PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}
-                             $<TARGET_PROPERTY:glfw,INTERFACE_INCLUDE_DIRECTORIES>
+                          $<TARGET_PROPERTY:glfw,INTERFACE_INCLUDE_DIRECTORIES>
 )
+
+if(EMSCRIPTEN)
+  target_include_directories(platform_ui_adapter PRIVATE ${CMAKE_SOURCE_DIR}/src/wasm)
+endif()
+
 target_link_libraries(platform_ui_adapter PUBLIC mujoco::mujoco)
 if(SIMULATE_GLFW_DYNAMIC_SYMBOLS)
   target_compile_definitions(platform_ui_adapter PUBLIC mjGLFW_DYNAMIC_SYMBOLS)

@@ -51,6 +51,78 @@ set_property(CACHE MUJOCO_USD_TARGET
   PROPERTY STRINGS ${MUJOCO_USD_ALLOWED_TARGET_VALUES}
 )
 
+
+if(EMSCRIPTEN)
+
+  # 1.  Produce ".html" launchers instead of raw ".js"
+  set(CMAKE_EXECUTABLE_SUFFIX ".html")
+  
+  set(CMAKE_INTERPROCEDURAL_OPTIMIZATION OFF)
+
+  set(CMAKE_SUPPRESS_DEVELOPER_WARNINGS 1)
+
+
+  # 2.  Provide a stub GLFW target that forwards to the contrib port
+   if(NOT TARGET glfw)
+    add_library(glfw INTERFACE)
+    target_compile_options(glfw INTERFACE "--use-port=contrib.glfw3")
+    target_link_options(   glfw INTERFACE "--use-port=contrib.glfw3")
+  endif()
+  set(glfw3_FOUND TRUE CACHE BOOL "Pretend GLFW was found" FORCE)
+  
+  # -------------------------------------------------------------------
+  # Stub libm so third-party CMake doesn’t fail
+  # -------------------------------------------------------------------
+  if(NOT TARGET m)
+    add_library(m INTERFACE IMPORTED GLOBAL)
+    set_target_properties(m PROPERTIES INTERFACE_LINK_OPTIONS "-lm")
+  endif()
+  set(LIBM_LIBRARY m CACHE STRING "Stub LibM for Emscripten" FORCE)
+
+
+
+  # -----------------------------------------------------------------------
+  # 4. build features
+  option(MUJOCO_BUILD_SIMULATE "Build simulate library for MuJoCo" ON)
+  option(MUJOCO_TEST_PYTHON_UTIL     "MuJoCo test utility libraries for Python bindings"         OFF)
+  option(MUJOCO_BUILD_EXAMPLES "MuJoCo examples"     OFF)
+  option(MUJOCO_BUILD_TESTS    "MuJoCo tests"        OFF)
+
+  set(MUJOCO_SIMULATE_USE_SYSTEM_GLFW OFF CACHE BOOL "")
+  set(MUJOCO_SAMPLES_USE_SYSTEM_GLFW  OFF CACHE BOOL "")
+
+  # -----------------------------------------------------------------------
+  # 5. compiler + linker flags (one list → added everywhere)
+  # ---- compile-time only ----
+  set(EM_COMPILE_FLAGS
+      -pthread
+      -Wno-error=deprecated-literal-operator
+      )                 
+
+  # ---- link-time only ----
+  set(EM_LINK_FLAGS
+      --use-port=contrib.glfw3       
+      -sASSERTIONS=1
+      -sALLOW_MEMORY_GROWTH=1
+      -sMIN_WEBGL_VERSION=2  -sMAX_WEBGL_VERSION=2  -sFULL_ES3=1                
+      -pthread               -sUSE_PTHREADS=1   -sPROXY_TO_PTHREAD=1   
+      # -sOFFSCREEN_FRAMEBUFFER=1
+      -sOFFSCREENCANVAS_SUPPORT=1
+      )
+
+  add_compile_options(${EM_COMPILE_FLAGS})
+  add_link_options(${EM_LINK_FLAGS})
+
+  # -----------------------------------------------------------------------
+  # 6. install prefix inside the build tree (optional)
+  set(CMAKE_INSTALL_PREFIX
+      ${CMAKE_CURRENT_SOURCE_DIR}/installation_wasm
+      CACHE PATH "")
+
+  set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
+endif()
+
+
 if(APPLE AND (MUJOCO_BUILD_EXAMPLES OR MUJOCO_BUILD_SIMULATE))
   enable_language(OBJC)
   enable_language(OBJCXX)
@@ -84,7 +156,22 @@ else()
   set(MUJOCO_RESOURCE_FILES "")
 endif()
 
-add_library(mujoco SHARED ${MUJOCO_RESOURCE_FILES})
+
+if(EMSCRIPTEN)
+  set(MUJOCO_LIBRARY_TYPE STATIC)
+else()
+  set(MUJOCO_LIBRARY_TYPE SHARED)
+endif()
+
+add_library(mujoco ${MUJOCO_LIBRARY_TYPE} ${MUJOCO_RESOURCE_FILES})
+
+if(EMSCRIPTEN)
+  target_sources(mujoco
+    PRIVATE
+      ${CMAKE_CURRENT_SOURCE_DIR}/src/wasm/dl_iterate_stub.c)
+  target_compile_options(mujoco PRIVATE -Wno-error=c23-extensions)
+endif()
+
 target_include_directories(
   mujoco
   PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
@@ -203,14 +290,43 @@ endif()
 
 if(NOT (APPLE AND MUJOCO_BUILD_MACOS_FRAMEWORKS))
   # Install the libraries.
-  install(
-    TARGETS mujoco
-    EXPORT ${PROJECT_NAME}
-    RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}" COMPONENT runtime
-    LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}" COMPONENT runtime
-    ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}" COMPONENT dev
-    PUBLIC_HEADER DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/mujoco" COMPONENT dev
-  )
+  if(EMSCRIPTEN)
+    install(
+      TARGETS mujoco
+      EXPORT ${PROJECT_NAME}
+      ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}" COMPONENT dev
+      PUBLIC_HEADER DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/mujoco" COMPONENT dev
+    )
+  else()
+    install(
+      TARGETS mujoco
+      EXPORT ${PROJECT_NAME}
+      RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}" COMPONENT runtime
+      LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}" COMPONENT runtime
+      ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}" COMPONENT dev
+      PUBLIC_HEADER DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/mujoco" COMPONENT dev
+    )
+  endif()
+
+  if(EMSCRIPTEN AND TARGET lodepng)
+    # Blow away whatever was there
+    set_property(TARGET lodepng PROPERTY INTERFACE_INCLUDE_DIRECTORIES "")
+
+    # Re-add compile-time and install-time dirs
+    target_include_directories(lodepng INTERFACE
+      $<BUILD_INTERFACE:${lodepng_SOURCE_DIR}>
+      $<INSTALL_INTERFACE:include/lodepng>)
+
+    # Header install + export (unchanged)
+    set_property(TARGET lodepng PROPERTY
+                PUBLIC_HEADER "${lodepng_SOURCE_DIR}/lodepng.h")
+
+    install(TARGETS lodepng
+            EXPORT ${PROJECT_NAME}
+            ARCHIVE       DESTINATION "${CMAKE_INSTALL_LIBDIR}" COMPONENT dev
+            PUBLIC_HEADER DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/lodepng"
+                          COMPONENT dev)
+  endif()
 
   set(CONFIG_PACKAGE_LOCATION "${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}")
 

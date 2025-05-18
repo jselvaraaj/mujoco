@@ -17,6 +17,11 @@
 
 #include <GLFW/glfw3.h>
 #include <mujoco/mujoco.h>
+#ifdef __EMSCRIPTEN__
+  #include <emscripten.h>
+  #include <emscripten/html5.h>
+  #include <glfw_compat.h>
+#endif
 
 // MuJoCo data structures
 mjModel* m = NULL;                  // MuJoCo model
@@ -121,10 +126,16 @@ int main(int argc, const char** argv) {
   // make data
   d = mj_makeData(m);
 
+  glfwSetErrorCallback([](int error, const char* description) {
+      mju_warning("GLFW: %s", description);  
+  });
+
   // init GLFW
   if (!glfwInit()) {
     mju_error("Could not initialize GLFW");
   }
+
+  mj_request_es_context();
 
   // create window, make OpenGL context current, request v-sync
   GLFWwindow* window = glfwCreateWindow(1200, 900, "Demo", NULL, NULL);

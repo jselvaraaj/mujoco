@@ -34,7 +34,13 @@ set(MUJOCO_SDF_SRCS
     torus.h
 )
 
-add_library(sdf_plugin SHARED)
+if(EMSCRIPTEN)
+  set(LIBRARY_TYPE STATIC)
+else()
+  set(LIBRARY_TYPE SHARED)
+endif()
+
+add_library(sdf_plugin ${LIBRARY_TYPE})
 target_sources(sdf_plugin PRIVATE ${MUJOCO_SDF_SRCS})
 target_include_directories(sdf_plugin PRIVATE ${MUJOCO_SDF_INCLUDE})
 target_link_libraries(sdf_plugin PRIVATE mujoco SdfLib)

@@ -87,6 +87,11 @@ target_link_libraries(testspeed mujoco::mujoco)
 # Build samples that require GLFW.
 
 add_executable(basic basic.cc)
+
+if(EMSCRIPTEN)
+  target_include_directories(basic PRIVATE ${CMAKE_SOURCE_DIR}/src/wasm)
+endif()
+
 target_compile_options(basic PUBLIC ${MUJOCO_SAMPLE_COMPILE_OPTIONS})
 target_link_libraries(
   basic
@@ -97,6 +102,11 @@ target_link_libraries(
 target_link_options(basic PRIVATE ${MUJOCO_SAMPLE_LINK_OPTIONS})
 
 add_executable(record record.cc array_safety.h)
+
+if(EMSCRIPTEN)
+  target_include_directories(record PRIVATE ${CMAKE_SOURCE_DIR}/src/wasm)
+endif()
+
 target_compile_options(record PUBLIC ${MUJOCO_SAMPLE_COMPILE_OPTIONS})
 target_link_libraries(
   record

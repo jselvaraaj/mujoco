@@ -26,7 +26,13 @@ set(MUJOCO_ELASTICITY_SRCS
     shell.h
 )
 
-add_library(elasticity SHARED)
+if(EMSCRIPTEN)
+  set(LIBRARY_TYPE STATIC)
+else()
+  set(LIBRARY_TYPE SHARED)
+endif()
+
+add_library(elasticity ${LIBRARY_TYPE})
 target_sources(elasticity PRIVATE ${MUJOCO_ELASTICITY_SRCS})
 target_include_directories(elasticity PRIVATE ${MUJOCO_ELASTICITY_INCLUDE})
 target_link_libraries(elasticity PRIVATE mujoco)
